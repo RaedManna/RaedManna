@@ -1,0 +1,187 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+// definee a structure to store each calculation in the history
+typedef struct {
+    char operation[50];
+    float result;
+} HistoryEntry;
+
+// function prototypes
+void displayMenu();
+int getChoice();
+void performOperation(int choice, HistoryEntry **history, int *historySize, int *historyCapacity);
+float add(float *numbers, int count);
+float subtract(float *numbers, int count);
+float multiply(float *numbers, int count);
+float divide(float *numbers, int count);
+void displayHistory(HistoryEntry *history, int historySize);
+void addHistory(HistoryEntry **history, int *historySize, int *historyCapacity, const char *operation, float result);
+
+int main() {
+    int choice;
+    int historySize = 0;
+    int historyCapacity = 2;
+    HistoryEntry *history = (HistoryEntry *)malloc(historyCapacity * sizeof(HistoryEntry));
+
+    // display a welcome message
+    printf("Welcome to the Advanced Calculator!\n");
+
+    do {
+        // display the menu of operations
+        displayMenu();
+
+        // gete the user's choice
+        choice = getChoice();
+
+        // perform the chosen operation
+        if (choice != 6) {
+            performOperation(choice, &history, &historySize, &historyCapacity);
+        }
+
+    } while (choice != 6); // repeat until the user chooses to exit
+
+    // display a goodbye message
+    printf("Thank you for using the Advanced Calculator. Goodbye!\n");
+
+    // free the allocated memory for history
+    free(history);
+
+    return 0;
+}
+
+// function to display the menu of operations
+void displayMenu() {
+    printf("\nPlease select an operation:\n");
+    printf("1. Addition\n");
+    printf("2. Subtraction\n");
+    printf("3. Multiplication\n");
+    printf("4. Division\n");
+    printf("5. Display History\n");
+    printf("6. Exit\n");
+}
+
+// function to get the user's choice
+int getChoice() {
+    int choice;
+    printf("Enter your choice: ");
+    scanf("%d", &choice);
+    return choice;
+}
+
+// function to perform the selected operation
+void performOperation(int choice, HistoryEntry **history, int *historySize, int *historyCapacity) {
+    int count, i;
+    float *numbers, result;
+    char operation[50];
+
+    if (choice >= 1 && choice <= 4) {
+        // Get the number of inputs from the user
+        printf("Enter the number of elements: ");
+        scanf("%d", &count);
+
+        // Allocate memory for the numbers
+        numbers = (float *)malloc(count * sizeof(float));
+
+        // Get the numbers from the user
+        for (i = 0; i < count; i++) {
+            printf("Enter number %d: ", i + 1);
+            scanf("%f", &numbers[i]);
+        }
+
+        // perform the operation based on the user's choice
+        switch (choice) {
+            case 1:
+                result = add(numbers, count);
+                snprintf(operation, sizeof(operation), "Addition of %d numbers", count);
+                break;
+            case 2:
+                result = subtract(numbers, count);
+                snprintf(operation, sizeof(operation), "Subtraction of %d numbers", count);
+                break;
+            case 3:
+                result = multiply(numbers, count);
+                snprintf(operation, sizeof(operation), "Multiplication of %d numbers", count);
+                break;
+            case 4:
+                result = divide(numbers, count);
+                snprintf(operation, sizeof(operation), "Division of %d numbers", count);
+                break;
+        }
+
+        printf("Result: %.2f\n", result);
+
+        // add the operation to the history
+        addHistory(history, historySize, historyCapacity, operation, result);
+
+        // free the allocated memory for numbers
+        free(numbers);
+    } else if (choice == 5) {
+        // Display the history of operations
+        displayHistory(*history, *historySize);
+    } else {
+        printf("Invalid choice. Please try again.\n");
+    }
+}
+
+// function to add numbers
+float add(float *numbers, int count) {
+    float sum = 0;
+    for (int i = 0; i < count; i++) {
+        sum += numbers[i];
+    }
+    return sum;
+}
+
+// function to subtract numbers
+float subtract(float *numbers, int count) {
+    float result = numbers[0];
+    for (int i = 1; i < count; i++) {
+        result -= numbers[i];
+    }
+    return result;
+}
+
+// function to multiply numbers
+float multiply(float *numbers, int count) {
+    float result = 1;
+    for (int i = 0; i < count; i++) {
+        result *= numbers[i];
+    }
+    return result;
+}
+
+// function to divide numbers
+float divide(float *numbers, int count) {
+    float result = numbers[0];
+    for (int i = 1; i < count; i++) {
+        if (numbers[i] == 0) {
+            printf("Error: Division by zero is not allowed.\n");
+            return 0;
+        }
+        result /= numbers[i];
+    }
+    return result;
+}
+
+// function to display the history of calculations
+void displayHistory(HistoryEntry *history, int historySize) {
+    printf("\nCalculation History:\n");
+    for (int i = 0; i < historySize; i++) {
+        printf("%d. %s: %.2f\n", i + 1, history[i].operation, history[i].result);
+    }
+}
+
+// function to add a new entry to the history
+void addHistory(HistoryEntry **history, int *historySize, int *historyCapacity, const char *operation, float result) {
+    // Check if the history array needs to be resized
+    if (*historySize >= *historyCapacity) {
+        *historyCapacity *= 2;
+        *history = (HistoryEntry *)realloc(*history, *historyCapacity * sizeof(HistoryEntry));
+    }
+
+    // aadd the new entry to the history
+    snprintf((*history)[*historySize].operation, sizeof((*history)[*historySize].operation), "%s", operation);
+    (*history)[*historySize].result = result;
+    (*historySize)++;
+}
