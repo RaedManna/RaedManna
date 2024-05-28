@@ -1,0 +1,480 @@
+#include <stdio.h>
+#include <stdlib.h> // includes absolute value funciton
+#include <string.h>
+#include <ctype.h> // to convert all characters to same case type
+
+
+
+
+
+struct Customer {
+    char name[81];
+    int transactions;
+    int items_purchased;
+    float amount_paid;
+};
+
+typedef struct Customer customer;
+
+
+void menu();
+void printCustomers(customer *, int);
+int countCustomers(FILE*);
+void readTransactions(FILE*, customer* ,int);
+customer* createHashTable();
+customer* addCustomer(customer*, customer, int, int*, int);
+customer* rehash(customer*, int*, int);
+void printTable(customer*, int);
+void searchTable(customer*, int, char[], int);
+int isprime(int ); // extra function... used in rehashing to complete the rounding to prime, part of the new size
+
+
+int main() {
+
+    FILE *inFile;
+    int no_of_customers = 0;
+    customer *customers;
+    customer *hashTable;
+
+    inFile = fopen("transactions.txt", "r");
+    if (inFile == NULL){
+        printf("File could not be opened.\n");
+        exit(1);
+    }
+    no_of_customers = countCustomers(inFile);
+    printf("There are %d unique customers\n", no_of_customers);
+
+    customers = (customer*) malloc(no_of_customers * sizeof (customer));
+    fclose(inFile);
+    inFile = fopen("transactions.txt", "r");
+    if (inFile == NULL){
+        printf("File could not be opened.\n");
+        exit(1);
+    }
+
+    readTransactions(inFile, customers, no_of_customers);
+    if (customers == NULL) {
+        printf("\nCustomers have NOT been read successfully!\n");
+        exit(1);
+    }
+    printCustomers(customers, no_of_customers);
+
+    hashTable = createHashTable();
+    int hashTableSize = 11;
+    char criteria;
+
+    printf("Enter your hashing criteria: ");
+    fflush(stdin);
+    scanf("%c", &criteria);
+
+    while (criteria != '1' && criteria != '2' && criteria != '3'){
+        printf("Error! Please enter a valid hashing criteria: ");
+        fflush(stdin);
+        scanf("%c", &criteria);
+    }
+    fflush(stdin);
+
+    int i;
+    for (i = 0; i < no_of_customers; i++){
+        hashTable = addCustomer(hashTable, customers[i], i, &hashTableSize, criteria - '0');
+        printf("%s has been added to the table, the hash table now can be seen below:", customers[i].name);
+        printTable(hashTable, hashTableSize);
+    }
+
+    char command = 0;
+    int exit = 0;
+    char searchName[81];
+    while (exit != 1) {
+        menu();
+        printf("\nCommand: ");
+        fflush(stdin);
+        scanf("%c", &command);
+
+        if (command == '1') {
+            printf("Enter the customer's name: ");
+            fflush(stdin);
+            scanf("%s", searchName);
+            searchTable(hashTable, hashTableSize, searchName, criteria - '0');
+        }
+        else if (command == '2'){
+            printTable(hashTable, hashTableSize);
+        }
+        else if (command == '3'){
+            exit = 1;
+            printf("Goodbye!\n");
+        }
+        else{
+            printf("Please enter a valid command!\n");
+        }
+    }
+    free(customers);
+    free(hashTable);
+    return 0;
+}
+
+
+void menu () {
+    printf("Please choose one of the following options:\n"
+           "(1) Search a customer\n"
+           "(2) Display hashtable\n"
+           "(3) Exit\n");
+}
+
+
+void printCustomers (customer* customers, int no_of_customers) {
+
+    printf("List of customers:\n");
+    int i;
+    for (i = 0; i < no_of_customers; ++i) {
+        printf("Name: %s, number of transactions = %d, number of items = %d, total amount paid = %.2f,"
+               " average amount paid per transaction = %.2f\n",
+               customers[i].name, customers[i].transactions, customers[i].items_purchased, customers[i].amount_paid,
+               customers[i].amount_paid/customers[i].transactions);
+    }
+
+}
+
+int countCustomers (FILE *inFile){
+    int no_of_customers = 0;
+    char **names;
+    char **temp;
+    char userName[100];
+    int transactionId;
+    char transactionTime[100];
+    char itemDescription[100];
+    int numberOfItemsPurchased;
+    float costPerItem;
+    char country[100];
+    int exists = 0;
+    char c;
+    while ((c = fgetc(inFile)) != EOF) {
+        if (c == '\n') {
+            break;
+        }
+    }
+    fscanf(inFile, "%[^;];%d;%[^;];%[^;];%d;%f;%[^\n]\n",
+           userName, &transactionId, transactionTime,  itemDescription,
+           &numberOfItemsPurchased, &costPerItem, country);
+    no_of_customers++;
+    names = (char**) malloc (sizeof(char*) * (no_of_customers));
+    names[no_of_customers-1] = (char*) malloc(100 * sizeof (char));
+    strcpy(names[no_of_customers - 1], userName);
+
+    while (fscanf(inFile, "%[^;];%d;%[^;];%[^;];%d;%f;%[^\n]\n",
+                  userName, &transactionId, transactionTime, itemDescription,
+                  &numberOfItemsPurchased, &costPerItem, country) != EOF) {
+        exists = 0;
+        for (int i = 0; i < no_of_customers; ++i) {
+            if (strncmp(names[i], userName, strlen(userName)) == 0){
+                exists = 1;
+                break;
+            }
+        }
+        if (exists)
+            continue;
+        temp = (char**) malloc (sizeof(char*) * (no_of_customers));
+        for (int i = 0; i < no_of_customers; ++i) {
+            temp[i] = (char*) malloc(100 * sizeof (char));
+            strcpy(temp[i], names[i]);
+        }
+        free(names);
+
+        names = (char**) malloc (sizeof(char*) * (no_of_customers + 1));
+        for (int i = 0; i < no_of_customers; ++i) {
+            names[i] = (char*) malloc(100 * sizeof (char));
+            strcpy(names[i], temp[i]);
+        }
+        free(temp);
+        names[no_of_customers] = (char*) malloc(100 * sizeof (char));
+        strcpy(names[no_of_customers], userName);
+        no_of_customers++;
+
+    }
+    return no_of_customers;
+}
+
+
+void readTransactions (FILE* inFile, customer* customers, int no_of_customers) {
+    char userName[100];
+    int transactionId;
+    char transactionTime[100];
+    char itemDescription[100];
+    int numberOfItemsPurchased;
+    float costPerItem;
+    char country[100];
+    int exists = 0;
+    int filled = 0;
+    char c;
+
+    for (int i = 0; i < no_of_customers; ++i) {
+        strcpy(customers[i].name, "unassigned");
+        customers[i].amount_paid = 0;
+        customers[i].items_purchased = 0;
+        customers[i].transactions = 0;
+    }
+
+    while ((c = fgetc(inFile)) != EOF) {
+        if (c == '\n') {
+            break;
+        }
+    }
+
+    while (fscanf(inFile, "%[^;];%d;%[^;];%[^;];%d;%f;%[^\n]\n",
+                  userName, &transactionId, transactionTime, itemDescription,
+                  &numberOfItemsPurchased, &costPerItem, country) != EOF) {
+        exists = 0; // n
+        int i; // n
+        for (i = 0; i < no_of_customers; ++i) {
+            if(strcmp(userName, customers[i].name) == 0){
+                exists = 1;
+                break;
+            }
+        }
+        if (exists){
+            customers[i].transactions ++;
+            customers[i].items_purchased += numberOfItemsPurchased;
+            customers[i].amount_paid += (numberOfItemsPurchased * costPerItem);
+        }
+        else{
+            strcpy(customers[filled].name, userName);
+            customers[filled].transactions ++;
+            customers[filled].items_purchased += numberOfItemsPurchased;
+            customers[filled].amount_paid += (numberOfItemsPurchased * costPerItem);
+            filled++;
+        }
+    }
+}
+
+customer* createHashTable(){ 
+    customer *hashTable;
+
+
+    int i;
+    hashTable = (customer*)malloc(11 * sizeof(customer)); //size of H.Table is dynamically set to 11
+
+
+    for (i = 0; i < 11; i++) {// initialize the hash table with initial values as specified in the pdf
+        strcpy(hashTable[i].name, "unassigned");
+        hashTable[i].transactions = 0;
+        hashTable[i].items_purchased = 0;
+        hashTable[i].amount_paid = 0;
+    }// no need for other details such as Time, country...
+
+    return hashTable;
+
+}
+
+customer* addCustomer(customer* hashTable, customer addedCustomer, int hashTableCapacity, int *hashTableSize, int criteria){ // note for me: hashTableSize passed as a pointer means once it changes here it will change in main and every other function
+
+
+
+    // if capacity or customer index gets incremented by 1, I could use it as customers number . So I can calculate the loadfactor
+
+      int first_letter = tolower(addedCustomer.name[0]);
+      int last_letter=tolower(addedCustomer.name[strlen(addedCustomer.name)-1]);
+      int key= abs(last_letter-first_letter);
+      /* simple test: helped me realize I was missing deducting 1 from length
+     char *name="raed";
+     printf("\n first letter: %c", name[strlen(name)-1]);*/
+
+
+
+    //hash(x)= x % size-of-hashTable
+    //collision resolution: hi(x)=(hash(x)+f(i)) mod table-size. While f(i) is different between these three methods of probing
+    int hashvalue = key % *hashTableSize; // chosen initial hash value (index in hash table) If empty
+    int i=0;
+    int hash_temp=hashvalue; // holds the original value for hash index. To be used in resolving collisions
+
+    // linear probing, formula for collision res in slides:, f(i)=i
+    if (criteria == 1) {
+        while (strcmp(hashTable[hashvalue].name, "unassigned") != 0) { // if hash index is occupied just move to next index until finding an empty slot (collisions solution for linear probing)
+            i++;
+            hashvalue = (hash_temp + i) % *hashTableSize; //collision resolution formula for L.P
+        }
+    }
+
+
+
+        // quadratic probing, formula for collision res in slides:, f(i)=i^2
+    else if (criteria == 2) {
+        while (strcmp(hashTable[hashvalue].name, "unassigned") != 0) {
+            i++;
+            hashvalue = (hash_temp + (i*i)) % *hashTableSize;//collision resolution formula for Q.P,
+                                                      //For me: remember C doesnt have ^ for expo
+        }
+    }
+
+
+
+
+    // double hashing, formula for collision res in slides:, f(i)=i*hash2(x), hash2(x)= R-(x mod R)
+    else if (criteria == 3) {
+            int hash2 = 7 - (key % 7);
+                    while (strcmp(hashTable[hashvalue].name, "unassigned") != 0) {
+                        i++;
+                        hashvalue = (hash_temp+ (i * hash2)) % *hashTableSize; //collision resolution formula for D.P
+        }
+    }
+
+
+    // add the customer to the hash table
+    hashTable[hashvalue] = addedCustomer; // hash value obtained from normal hash formula " if no collisions" or from one of the 3 collision resolution methods
+
+
+    double loadfactor=(double)(hashTableCapacity+1)/(double)(*hashTableSize);
+    //printf("\n%f",loadfactor); test
+
+    // check if rehashing (creating a hash table with bigger size and destroying old) is needed
+    if (loadfactor>0.50) {
+
+        hashTable = rehash(hashTable,hashTableSize, criteria);
+    }
+
+
+    return hashTable;
+}
+
+
+
+
+
+
+
+
+
+
+
+customer* rehash(customer* hashTable, int *hashTableSize, int criteria){
+
+
+
+
+    int newsize = *hashTableSize * 2; //rehashing formula for size of new table: double old and round to a Prime
+        while (!isprime(newsize)) {
+            newsize++;
+            }
+            //printf("\n\n\n%d",newsize); test
+
+
+    customer *newhashtable = (customer*)malloc(newsize * sizeof(customer)); //new hash-table with newly calculated size
+
+
+
+    for (int i = 0; i < newsize; i++) {// initializeing the new hash table
+        strcpy(newhashtable[i].name, "unassigned");
+        newhashtable[i].transactions = 0;
+        newhashtable[i].items_purchased = 0;
+        newhashtable[i].amount_paid = 0.0;
+    }
+
+
+
+
+    for (int i = 0; i < *hashTableSize; i++) { // put the old customers back in the new table while using the hashing methods
+        if (strcmp(hashTable[i].name, "unassigned") != 0) {
+            newhashtable = addCustomer(newhashtable, hashTable[i], i, &newsize, criteria); //goes back to the add function which will apply the hashing formula according to the criteria ( as specified in pdf)
+        }
+    }
+
+
+    free(hashTable); //destroy old hash table in memory
+
+
+    *hashTableSize = newsize;// new hash table size updated, even out of function because it was passed as a pointer
+
+    return newhashtable;
+}
+
+
+
+
+
+void printTable(customer *hashTable, int hashTableSize){
+
+    printf("\n***************************************************************************\n");
+    printf("Index         Name     Transactions      Items    Paid_Amount\n");
+    for (int i = 0; i < hashTableSize; i++) {
+        printf("%5d", i); //printing the indexes
+        if (strcmp(hashTable[i].name, "unassigned") == 0) {
+            printf("\n"); // print empty line as specified in pdf
+        } else {
+            printf("  %10s%10d        %10d   %10.2f\n",hashTable[i].name, hashTable[i].transactions,hashTable[i].items_purchased, hashTable[i].amount_paid); // did the alignment by trial and error
+        }
+    }
+    printf("***************************************************************************\n");
+
+}
+
+void searchTable(customer *hashTable, int hashTableSize, char searchName[], int criteria){ // will be similar to the add function, but now I use the searchname as the key
+
+
+
+    //This search function is case sensitive
+    int first_letter = tolower(searchName[0]);
+    int last_letter = tolower(searchName[strlen(searchName) - 1]);
+    int key = abs(last_letter - first_letter);
+    int hashvalue = key % hashTableSize;
+    int i = 0;
+
+    // the 3 criterias
+
+
+    if (criteria == 1) { // linear probing
+        while (strcmp(hashTable[hashvalue].name, searchName) != 0 && strcmp(hashTable[hashvalue].name, "unassigned") != 0) { // checks if its found from the original key , if not it will apply the L.P method of collision res until it gives the correct hashvalue
+            i++;
+            hashvalue = (key + i) % hashTableSize;
+        }
+    }//strcmp(hashTable[hashvalue].name, "unassigned") != 0. condition to not compare NULL which caused problems
+
+
+
+
+    else if (criteria ==2) { //quadratic probing
+        while (strcmp(hashTable[hashvalue].name,searchName) != 0 && strcmp(hashTable[hashvalue].name, "unassigned") != 0) {
+            i++;
+            hashvalue = (key + (i * i)) % hashTableSize;}
+            }
+
+
+
+
+
+    else if (criteria==3) { // double hashing
+        int hash2 = 7 - (key % 7);
+            while (strcmp(hashTable[hashvalue].name, searchName) != 0 && strcmp(hashTable[hashvalue].name, "unassigned") != 0) {
+                i++;
+                hashvalue = (key + (i * hash2)) % hashTableSize;
+        }
+    }
+
+
+
+    // when it reaches here-> hash value would be the final value after applying the resolution method (depends on criteria).
+
+    if (strcmp(hashTable[hashvalue].name, searchName) == 0) {
+        printf("\nInformation for customer %s:\n",searchName);
+        printf("Number of transactions= %d\n Items Purchased= %d\n Total Amount Paid =%.2f\n",hashTable[hashvalue].transactions, hashTable[hashvalue].items_purchased,hashTable[hashvalue].amount_paid);
+    } else {
+        printf("\nUser does not exist in the table!\n");
+    }
+}
+
+
+
+
+
+
+//Extra
+int isprime(int n){
+    int test=1; //initialize as prime
+
+ if (n == 0 || n == 1)
+    test=0; //not prime
+
+  for (int i = 2; i <= n / 2; ++i) { // prime number property:if n is divisible by i ( no remainder, mod==0), then n is not prime
+    if (n % i == 0) {
+      test= 0; //not prime
+    }
+  }
+  return test;
+}
