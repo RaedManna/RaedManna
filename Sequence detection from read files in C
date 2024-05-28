@@ -1,0 +1,246 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct node{
+   char sequence[81];
+   struct node *next;
+};
+
+struct pattern{
+    char p[81];
+    int times;
+    int sequences;
+};
+
+struct node * readSequences(char filename[]);
+void searchPatterns(struct node *head, struct pattern *patterns, int numberOfPatterns);
+void sortPatterns(struct pattern *patterns, int numberOfPatterns);
+void printPatterns(struct pattern *patterns, int numberOfPatterns);
+
+
+int power(int base, int expo); // helper instead of the one in math.h library which isnt included in tmeplate
+
+
+
+
+int main(int argc, char *argv[]){
+    struct node * head = NULL;
+    struct pattern *patterns = NULL;
+
+    // WRITE YOUR CODE HERE
+     int numberOfPatterns;
+     char file_name[20]; //assumed here that the name of file wont exceed 20 characters
+
+    printf("\nEnter the file path containing the DNA sequences:");
+      scanf("%s",file_name);
+   // printf("\n%s",file_name); test that its reading correctly
+
+
+    head = readSequences(file_name);// no dummy nodes since I started from the head not a temp pointer pointing to it.
+     // printf("\n%s\n",head->next->next->sequence); test for 3rd line in DNAsequences.txt
+
+
+    printf("Enter the number of patterns: ");
+      scanf("%d", &numberOfPatterns);
+
+
+    patterns = (struct pattern *)malloc(numberOfPatterns * sizeof(struct pattern)); // allocating memory for patterns structure array after getting its size from the user
+
+    for (int i = 0; i < numberOfPatterns; i++) {
+        printf("Enter the pattern: ");
+        scanf("%s", patterns[i].p);
+    }
+
+
+    searchPatterns(head, patterns, numberOfPatterns); // string check if they match any of the patterns in the txt file.. if so how many times. Using:Rabin-Karp Algorithm
+
+
+    sortPatterns(patterns, numberOfPatterns);// insertion sort, Descending
+
+
+    printPatterns(patterns, numberOfPatterns);// simple print function
+
+
+    free(patterns);// free the dynamically allocated memory for pattern array
+    free (head);
+
+
+    return 0;
+}
+
+
+
+
+struct node * readSequences(char filename[]){
+	struct node * head = NULL;
+
+	// WRITE YOUR CODE HERE
+
+
+   char temp_seq[81]; //same size as sequence in sequence structure
+   struct node *tail = NULL;
+   char c; // to find number of lines
+   int linenum=0;
+   int n=0;
+
+
+    FILE *infile = fopen(filename, "r");
+
+            if (infile == NULL) {
+                printf("File could not be opened.\n");
+                exit(1);
+                        }
+
+    while((c=fgetc(infile))!=EOF){
+
+        if(c=='\n')
+            linenum++;
+    }
+       // printf("\nnum of lines in file: %d",linenum); test, should be 25 for DNAsequences.txt
+
+rewind(infile);
+
+
+    while (fscanf(infile,"%[^\n]\n",temp_seq) && n<linenum) {
+
+        struct node *newnode = (struct node *)malloc(sizeof(struct node));
+                if (newnode == NULL) {
+                    printf("Memory allocation error.\n");
+                    exit(1);
+                            }
+
+        strcpy(newnode->sequence,temp_seq);
+
+        if (head == NULL) { // head will keep its position  as first node.... but tail will keep traversing till it reaches the end node and point to NULL
+            head = newnode;
+            tail=head;
+            }
+
+
+         else {
+            tail->next = newnode;
+            tail=newnode;
+        }
+n++;
+    }
+
+    fclose(infile);
+
+    //printf("\n%s\n",head->next->next->sequence); testing for the 3rd line before continuing to search function
+
+    return head;
+}
+
+
+
+void searchPatterns(struct node *head, struct pattern *patterns, int numberOfPatterns) { // Followed the formulas provided
+    int d = 4; // 4 chemical bases
+    int q = 11; // given
+    struct node *tail = head; // so we traverse the L.L. If head is used then technically we are losing all the data because no way of accessing them later.
+
+    while (tail != NULL) { // outer loop, goes through the given sequences (lines) in the txt file
+        for (int j = 0; j < numberOfPatterns; j++) { // inner loop, goes through the patterns the user wants to check
+            int n = strlen(tail->sequence);
+            int m = strlen(patterns[j].p);
+            int h = power(d, m - 1) % q; // Didn't include math.h in the template, so I implemented the pow function as a helper
+            int p = 0;
+            int t0 = 0;
+            int patternFound = 0; //will use it to correctly increment patterns->sequences. So I dont increment in the same sequence
+
+            for (int i = 0; i < m; i++) {
+                p = ((d * p) + patterns[j].p[i]) % q; // '.' NOT '->' BC index of patterns specified 'j'. if not then '->'. commented a similar test in print function
+                t0 = ((d * t0) + tail->sequence[i]) % q;
+            }
+
+            for (int s = 0; s <= n - m; s++) { // here hashing the pattern
+
+                if (p == t0) {
+                    int match = 1; // Assume a match initially
+                    for (int i = 0; i < m; i++) {
+                        if (patterns[j].p[i] != tail->sequence[s + i]) {
+                            match = 0; // don't match, so set it to 0
+                            break; // break out of this current iteration of the inner loop
+                        }
+                    }
+
+                   if (match) {
+                        patterns[j].times++;
+                        if(!patternFound){//Extra condition to not increment in the same DNA sequence
+                        patterns[j].sequences++;
+                        patternFound = 1;
+                    }
+                   }
+                }
+                if (s < n - m) {
+                    t0 = (d * (t0 - tail->sequence[s] * h) + tail->sequence[s + m]) % q;
+                }
+
+                if (t0 < 0) { // was talked about in class
+                        t0 += q;
+                    }
+
+            }
+
+        }
+
+
+        tail = tail->next;
+    }
+}
+
+
+
+
+
+void sortPatterns(struct pattern *patterns, int numberOfPatterns){
+
+	// WRITE YOUR CODE HERE
+
+	//pseudo code from:  https://www.javatpoint.com/insertion-sort-in-c. it also had similar implementation but for Ascending
+
+	int i=1;
+	int j;
+	struct pattern key; //would go through the array patterns
+
+	for (i ; i < numberOfPatterns; i++) {
+        key = patterns[i];
+        int j = i - 1;
+
+
+        while (j >= 0 && patterns[j].times < key.times) { //if pattern of index J has appeared (times) more than the key which has pattern index i.Then move it one position *back
+            patterns[j + 1] = patterns[j];
+            j = j - 1;
+        }
+
+        patterns[j + 1] = key;
+    }
+}
+
+
+
+void printPatterns(struct pattern *patterns, int numberOfPatterns){
+
+	// WRITE YOUR CODE HERE
+
+	printf("\n\n");
+	 for (int i = 0; i < numberOfPatterns; i++) {
+        printf("%s is detected %d times in %d DNA sequences\n", patterns[i].p, patterns[i].times, patterns[i].sequences); //note for me: since now the index is specified "[i]" use '.' instead of '->'
+    }
+
+    /*for me : IMP *****test
+    printf("\n%c",patterns->p[1]);
+    printf("\n%c",patterns[1].p[1]); */
+}
+
+
+
+int power(int base, int expo) { // helper instead of the one in math.h library which isnt included in tmeplate
+    int result = 1;
+    for (int i = 0; i < expo; i++) {
+        result *= base;
+    }
+    return result;
+}
+
+
