@@ -1,0 +1,1253 @@
+#ifndef BOARD_H
+#define BOARD_H
+#include "Pieces.h"
+
+
+
+class Board {
+
+
+
+private:
+    char board[4][3]; // 4 rows, 3 coloumns
+    int  health[4][3];  //health of each character placed on board ,I tied placed pieces' health to the board  which made it more convenient to deal with  in the board class
+    int  damage[4][3];
+
+
+
+
+public:
+    Board();
+    ~Board();
+    void displayBoard();   //will display the board for each player
+    void placePiece(int row, int col, char piece); //takes the coordinates and the type from gaemplay functions, it will also assign special abilties 
+    char getPiece(int row, int col);
+    bool isOccupied(int row, int col);  //will check for one of the errors that may occur when placePiec function called
+    void updateHealth(int row, int col, int health); // will update health in processAttack function in Gameplay (after each attack) and for Mage ability
+    void updatedmg(int row, int col, int dmg); // for Knight ability
+    int  getHealth(int row, int col);  //health of the pieces placed on the board
+    int  getdmg(int row, int col);
+    bool killed(int row, int col);  // will use it at the end to show details
+};
+
+
+
+
+#endif
+
+
+//------------------------------------------------------------------------------------------------
+
+/*V.Important Note : my way of implementing this game : 1-Starting player is randomly chosen for 1st round
+                                                        2-After 1st round  they change who start for each round (means 2nd round -> Y will start if X started the 1st)
+                                                        3-The player who puts his piece last is the one who starts the attack
+                                                        4-Tried to handle most errors , that I thought of .
+                                                        5-in my submited zip I will also include a pdf to show how I divided and understodd this assgimnet (extra)
+                                                        6-I used windows local debugger for all my runs
+                                                        */
+
+
+#ifndef GAMEPLAY_H
+#define GAMEPLAY_H
+#include"Pieces.h"
+#include"Board.h"
+#include <iostream>
+
+using std::cout;
+
+
+// Gameplay "Has a relation" pieces which means either composition or aggregation, I will use composition because I dont find the need of keeping the lifetime of the pieces after the gameplay ends 
+
+class Gameplay {
+
+private:
+    int playerXHealth;
+    int playerYHealth;
+    Board  playerXBoard;
+    Board  playerYBoard;
+
+
+    Melee* playerX_Mpieces[4];
+    Ranged* playerX_Rpieces[3];
+    Melee* playerY_Mpieces[4];
+    Ranged* playerY_Rpieces[3];
+
+    bool playerXStarts;  // return true if the random generator chose X to start the game, so I can organize the printing functions
+
+
+
+public:
+    Gameplay();  //deffault constr
+    ~Gameplay();  //destructor ,for the heap and dynamic allocations
+    void playGame();  //to start the game in main, so main could be as mimimal as possible 
+    void initializeBoards();
+    void chooseStartingPlayer(); //randomly choosing player
+    void printPlayerInfo();  // the board, the pieces on it and the players health
+    void playerTurn(Board&, Melee*, Ranged*, int*, int*); // send board ( which one will be dcided later in code) and the decided player ranged and melee pieces
+    bool processPlacement(Board&, int, char*, bool);   // will take the Board which we want to place in( based on playerTurn) and the index of the piece ,symbol and the function isMelee to know which Gameplay array object to access( melee or ranged)
+    void processAttack(int, int); // here I will preform the attacks based on the given rules , it will take the attacker row ,  and attacker colum .
+
+    bool checkGameEnd();
+
+
+    /* After reviewing my code, I think there was no need to pass parameters( Board&, Melee*, Ranged* ) to playerTurn. And the only inputs needed are the two addresss to change attacker_row and attacker_col by passing by refrence
+    . Pointers waiting for addresses ( P.B.R) */
+
+
+    Gameplay& operator=(const Gameplay& std);       // Assignment opertaor
+
+};
+#endif 
+
+
+
+//-------------------------------------------------------
+
+#ifndef PIECES_H
+#define PIECES_H
+
+#include <iostream>
+
+class Pieces {
+protected:
+    int health;
+    int damage;
+    char symbol;
+    int remainingUsage;
+
+public:
+    Pieces();
+    Pieces(int health, int damage, char symbol, int remainingUsage);
+    //virtual ~Pieces() No need for a destructor
+
+    int getHealth();//returns health
+    int getDamage();//returns damage
+    char getCharacter();//returns the character
+    int getUsage();//returns the remaining usages 
+    void decreaseUsage();//decreasing usage by 1 everytime the piece got used
+    void decreaseHealth(int amount);//decreasing health depending on the damage 
+    virtual void printPiece() const = 0; //pure virtual
+};
+//im using override to override the virtual function in every class 
+
+//Melee class
+class Melee : public Pieces {
+public:
+    Melee(int health, int damage, char symbol, int remainingUsage);//setting the stats
+    void printPiece() const override;
+};
+
+//Ranged class
+class Ranged : public Pieces {
+public:
+    Ranged(int health, int damage, char symbol, int remainingUsage);//setting the stats
+    void printPiece() const override;
+};
+
+//Spearman class
+class Spearman : public Melee {
+public:
+    Spearman(); // constructor 
+    void printPiece() const override;
+};
+
+//Ranger class
+class Ranger : public Melee {
+public:
+    Ranger();//constructor 
+    void printPiece() const override;
+};
+
+//Swordsman class
+class Swordsman : public Melee {
+public:
+    Swordsman();//constructor 
+    void printPiece() const override;
+};
+
+//Knight class
+class Knight : public Melee {
+public:
+    Knight();//constructor 
+    void printPiece() const override;
+};
+
+//Bowman class
+class Bowman : public Ranged {
+public:
+    Bowman();//constructor 
+    void printPiece() const override;
+};
+
+//Elf class
+class Elf : public Ranged {
+public:
+    Elf();//constructor 
+    void printPiece() const override;
+};
+
+//Mage class
+class Mage : public Ranged {
+public:
+    Mage();//constructor 
+    void printPiece() const override;
+};
+
+#endif // PIECES_H
+
+//-------------------------------------------------------------
+
+
+#include "Board.h"
+#include <iostream>  // so i can use , using std::cout
+
+using std::cout;
+
+Board::Board() {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 3; j++) {
+            board[i][j] = ' ';   //empty boxes
+            health[i][j] = 0;    //no pieces placed so each box/piece health is set to 0
+            damage[i][j] = 0;
+        }
+    }
+}
+
+
+
+
+
+Board:: ~Board() {
+
+    //cout << "Board destructor called.\n";    for testing
+
+
+}
+
+
+
+
+
+
+
+
+// did the alligment manually by testing , so may not be perfect
+void Board::displayBoard() {
+    cout << "     1      2     3\n";
+    cout << " ----------------------\n";
+    for (int i = 0; i < 4; i++) {
+        cout << char('A' + i) << "| ";  // Each character has a numeric value based on the ASCII table
+        for (int j = 0; j < 3; j++) {
+
+            cout << board[i][j] << "(" << health[i][j] << ")" << " | ";// Display the health and symbol of each piece  placed
+        }
+        cout << "\n ----------------------\n";
+    }
+}
+
+// Will print both boards before attack and both boards after attack
+// the board for each player will also be printed after the player places the piece (to detect any mistakes in placement earliee)
+
+
+
+
+
+
+
+
+
+void Board::placePiece(int row, int col, char piece) {    // will tie the piece health and damage to the board two 2d arrays for health and piece
+
+    board[row][col] = piece;
+
+
+
+    // first I will start by adding the special abilities if Mage ->all "Placed " pieces on its board +1 health, Knight-> +1 attack damage for all pieces on its board
+
+    // ImportantL please read: the idea of doing temporary 2D arrays for health and damage came because I wanted any "augmented" modifications from special abilities to be tied to whole specific board not only special type of pieces on that board 
+
+
+
+    //Mage special ability
+    if (piece == 'M') {
+
+        for (int i = 0; i < 4; i++) {
+
+            for (int j = 0; j < 3; j++) {
+
+                if (board[i][j] != ' ')
+
+                    updateHealth(i, j, getHealth(i, j) + 1);  // i
+
+            }
+
+        }
+    }
+
+
+
+    //knight special ability
+    if (piece == 'K') {
+
+
+        for (int i = 0; i < 4; i++) {
+
+            for (int j = 0; j < 3; j++) {
+
+                if (board[i][j] != ' ')
+
+                    updatedmg(i, j, getdmg(i, j) + 1);
+
+            }
+
+        }
+    }
+
+
+
+
+    //setting the initial health and damage for the box/piece assigned
+    switch (piece) {
+
+    case 'B':   //bowman
+
+        health[row][col] = 12;
+        damage[row][col] = 3;
+
+        break;
+
+    case 'E':  //elf
+
+        health[row][col] = 8;
+        damage[row][col] = 6;
+
+        break;
+
+
+
+    case 'M':   //mage
+
+        health[row][col] = 4;
+        damage[row][col] = 8;
+
+        break;
+
+
+
+    case 'S':   //spearman
+
+        health[row][col] = 6;
+        damage[row][col] = 3;
+
+        break;
+
+
+
+    case 'R':    //ranger
+
+        health[row][col] = 8;
+        damage[row][col] = 6;
+
+        break;
+
+
+
+    case 'W':    //swordsman
+
+        health[row][col] = 6;
+        damage[row][col] = 4;
+
+        break;
+
+
+
+    case 'K':    //knight
+
+        health[row][col] = 10;
+        damage[row][col] = 10;
+
+        break;
+
+
+    }
+
+
+    Board::displayBoard();
+}
+
+
+
+
+// the indexes of row and coloums are passed correctly for these functions
+
+char Board::getPiece(int row, int col) {
+    return board[row][col];
+}
+
+
+
+bool Board::isOccupied(int row, int col) {
+
+    // cout << "\nrow index passed to isoccu: " << row << "\ncoloum index passed: " << col << "\n";  tested if I needed to decrement the row, coloum any further
+    return (board[row][col] != ' '); // if  board[row][col] != ' ' then will return true since its a bool type
+
+}
+
+void Board::updateHealth(int row, int col, int health) {  // after each attack and used for specail Mage ability
+    this->health[row][col] = health;
+}
+
+
+
+void Board::updatedmg(int row, int col, int dmg) {
+
+    this->damage[row][col] = dmg;
+
+}
+
+int Board::getHealth(int row, int col) {
+    return health[row][col];
+}
+
+
+
+int Board::getdmg(int row, int col) {
+
+    return damage[row][col];
+
+}
+
+
+
+bool Board::killed(int row, int col) {  // for displaying the details at end of game
+
+
+    if (getHealth(row, col) == 0)
+        return 1;
+
+    else
+        return 0;
+
+}
+
+
+//-------------------------------------------------------------
+
+
+#include"Gameplay.h"
+#include <iostream>  
+
+using std::cout;
+
+Gameplay::Gameplay() {
+
+
+
+    /*here I am initializing memory for each composed object pointer in Gameplay with the correct derived class
+    from the abstract class Piece created by my partner */
+
+    //4 pieces for each player are Melee
+    //3 pieces are Ranged .
+    //For clarification: playerX_Mpieces -> means player X melee pieces
+
+    playerX_Mpieces[0] = new Spearman();
+    playerX_Mpieces[1] = new Ranger();
+    playerX_Mpieces[2] = new Swordsman();
+    playerX_Mpieces[3] = new Knight();
+     playerX_Rpieces[0] = new Bowman();
+     playerX_Rpieces[1] = new Elf();
+     playerX_Rpieces[2] = new Mage();
+
+    // Initialize player Y pieces
+    playerY_Mpieces[0] = new Spearman();
+    playerY_Mpieces[1] = new Ranger();
+    playerY_Mpieces[2] = new Swordsman();
+    playerY_Mpieces[3] = new Knight();
+     playerY_Rpieces[0] = new Bowman();
+     playerY_Rpieces[1] = new Elf();
+     playerY_Rpieces[2] = new Mage();
+
+
+    playerXHealth = 100;
+    playerYHealth = 100;
+    playerXStarts = false;
+}
+
+
+
+
+
+Gameplay& Gameplay::operator=(const Gameplay& std) {
+    if (this == &std) {
+        return *this;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        playerX_Mpieces[i] = std.playerX_Mpieces[i];
+        playerY_Mpieces[i] = std.playerY_Mpieces[i];
+    }
+
+
+    for (int i = 0; i < 3; i++) {
+        playerX_Rpieces[i] = std.playerX_Rpieces[i];
+        playerY_Rpieces[i] = std.playerY_Rpieces[i];
+    }
+
+
+
+
+
+
+    playerXHealth = std.playerXHealth;
+    playerYHealth = std.playerYHealth;
+    playerXBoard = std.playerXBoard;
+    playerYBoard = std.playerYBoard;
+    playerXStarts = std.playerXStarts;
+
+    return *this;
+}
+
+
+
+
+Gameplay:: ~Gameplay() {
+
+    for (int i = 0; i < 4; i++) {
+
+        delete  playerX_Mpieces[i];
+        delete  playerY_Mpieces[i];
+    }
+
+    for (int i = 0; i < 3; i++) {
+
+        delete  playerX_Rpieces[i];
+        delete  playerY_Rpieces[i];
+    }
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+void Gameplay::initializeBoards() {// 2 empty boards
+    this->playerXBoard = Board();  // composed object in Gameplay class "playerXBoard" 
+    this->playerYBoard = Board();
+}
+
+
+
+
+
+
+
+
+
+void Gameplay::printPlayerInfo() {
+    cout << "\nPlayer X:\n";
+    playerXBoard.displayBoard();
+    cout << "Player X Health: " << playerXHealth << "\n";
+
+    cout << "\nPlayer Y:\n";
+    playerYBoard.displayBoard();
+    cout << "Player Y Health: " << playerYHealth << "\n";
+}
+
+
+
+
+
+
+
+
+
+void Gameplay::chooseStartingPlayer() {
+    playerXStarts = rand() % 2;    // generates random number ( 0 or 1) 
+    cout << "Randomly determined starting player: Player " << (playerXStarts ? "X" : "Y") << "\n"; //if its 1 then prints "X" , 0 -> "Y"
+}
+
+
+
+
+
+
+//I delt with playGame like a Top level function that uses All of the other functions for the Gameplay class, directly or indirectly through another function
+void Gameplay::playGame() {
+
+    int attack_row = 0; // here I will pass by refrence (to change the original values from functions) to the playerTurn function that will give the attacker row
+    int attacker_col = 0;   //same idea
+
+
+
+    initializeBoards();
+    chooseStartingPlayer();
+
+    cout << "Game Start!\n\n";
+
+    while (playerXHealth > 0 && playerYHealth > 0) {
+        printPlayerInfo();
+
+
+        // who starts the game is randomly chosen ,after that, starting player changes each round .  Who places his piece last-> starts the attack
+        // send the boards in order based on who starts and send their ranged and melee pieces and then give the turn to other player
+        if (playerXStarts) {
+            playerTurn(playerXBoard, *playerX_Mpieces, *playerX_Rpieces, &attack_row, &attacker_col);
+            playerXStarts = !playerXStarts; // important to swwitch turns
+            playerTurn(playerYBoard, *playerY_Mpieces, *playerY_Rpieces, &attack_row, &attacker_col);
+
+            // After both players took turns call the processattack function
+            processAttack(attack_row, attacker_col);
+
+
+        }
+        else {
+            playerTurn(playerYBoard, *playerY_Mpieces, *playerY_Rpieces, &attack_row, &attacker_col);
+            playerXStarts = !playerXStarts; // important to swwitch turns
+            playerTurn(playerXBoard, *playerX_Mpieces, *playerX_Rpieces, &attack_row, &attacker_col);
+            processAttack(attack_row, attacker_col);
+
+        }
+
+
+
+        std::cout << "\n\n\n\nPlayer X board After Attack:" << "\n";
+        playerXBoard.displayBoard();
+        cout << "Player X Health after Attack: " << playerXHealth << "\n\n\n";
+
+        std::cout << "\nPlayer Y board After Attack:" << "\n";
+        playerYBoard.displayBoard();
+        cout << "Player Y Health after Attack: " << playerYHealth << "\n\n\n";
+
+        int check = checkGameEnd();
+
+        if (check == 1) {
+
+            // printing pieces Y killed
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 3; j++) {
+                    if (playerXBoard.killed(i, j) == 0)
+                        cout << "\nPlayer Y killed: " << playerXBoard.getPiece(i, j);
+
+
+                }
+            }
+
+
+            //printing pieces X killed
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 3; j++) {
+                    if (playerYBoard.killed(i, j) == 0)
+                        cout << "\nPlayer X killed: " << playerYBoard.getPiece(i, j);
+
+
+                }
+            }
+
+
+        }
+
+
+
+
+        else // game didnt end 
+            cout << "\n\n\nNext Round:\n";
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
+void Gameplay::playerTurn(Board& playerBoard, Melee* playerMpieces, Ranged* playerRpieces, int* row, int* col) {
+    cout << "\nPlay:";
+    cout << "\nAvailable Pieces:\n";
+
+
+
+
+    // Print the available pieces and their usages For each player seperatelt 
+
+    cout << "\nPlayer X pieces details:\n";
+    for (int i = 0; i < 4; i++) {
+        cout << i + 1 << ". ";
+
+        playerX_Mpieces[i]->printPiece();
+
+        cout << " Remaining Usages: " << playerX_Mpieces[i]->getUsage() << "\n";
+
+    }
+
+
+    for (int i = 0; i < 3; i++) {
+        cout << i + +4 + 1 << ". ";
+        playerX_Rpieces[i]->printPiece();
+        cout << " Remaining Usages: " << playerX_Rpieces[i]->getUsage() << "\n";
+    }
+
+
+
+    cout << "\nPlayer Y pieces details:\n";
+    for (int i = 0; i < 4; i++) {
+        cout << i + 1 << ". ";
+
+        playerY_Mpieces[i]->printPiece();
+
+        cout << " Remaining Usages: " << playerY_Mpieces[i]->getUsage() << "\n";
+    }
+
+
+
+
+
+    for (int i = 0; i < 3; i++) {
+        cout << i + +4 + 1 << ". ";
+        playerY_Rpieces[i]->printPiece();
+        cout << " Remaining Usages: " << playerY_Rpieces[i]->getUsage() << "\n";
+    }
+
+
+
+
+
+
+
+
+    // Get the user's choice
+    int pieceIndex;
+    bool isMelee = false;
+
+
+    cout << "\nChoose a piece (1-7): ";
+
+    std::cin >> pieceIndex;    //for me:dont forget to initialize any variable if it wont have a cin after
+
+
+
+    //error checking of piece number
+    while (pieceIndex > 7 || pieceIndex <= 0) {
+
+
+        cout << "Invalid piece selection.\n";
+        cout << "\nChoose a piece (1-7): ";
+        std::cin >> pieceIndex;
+
+    }
+
+
+
+    if (pieceIndex <= 4 && pieceIndex > 0) {
+
+        isMelee = true;
+        pieceIndex--;   // Melee object array has indexes from 0->3
+
+
+    }
+
+
+    else if (pieceIndex > 4 && pieceIndex <= 7) {
+
+
+        isMelee = false;
+        pieceIndex = pieceIndex - 5; // because ranged pieces object array for each player has indexes from 0->2
+
+    }
+
+
+
+
+
+
+
+
+    // Get the coordinates
+    char coord[3]; // wont need more than that of a space
+    cout << "Enter the coordinates (Example A1) , first letter is capital: ";
+    std::cin >> coord;
+
+
+    *row = (coord[0] - 'A'); // attacker_row
+    *col = (coord[1] - '1'); //attacker_col
+
+
+    // Process the placement to checke if the coordinates are allowed for each type and returns 1 if passes all the error checks 
+
+    processPlacement(playerBoard, pieceIndex, coord, isMelee);
+
+}
+
+
+
+
+bool Gameplay::processPlacement(Board& playerBoard, int index, char* coord, bool isMelee) {
+
+    int row = (coord[0] - 'A') + 1;  // letter , added 1 bc  (coord[0] - 'A') gives the index of row and in this function I test the validity of "Real" rows in board.  same for next line
+    int col = (coord[1] - '1') + 1;  //number
+
+
+
+    /* These two lines of cout helped alot in determining I should increment previous
+   std::cout << "\n\n COLOUM: " << col << "\n";
+   std::cout << "Row: " << row << "\n";
+
+          */
+
+
+    if (row < 0 || row > 4 || col < 0 || col > 3) {
+        cout << "Invalid coordinates.( Wont place anything, wait for next round)\n";
+        return 0; //exists from function
+
+    }
+
+
+    else if (playerBoard.isOccupied(row - 1, col - 1)) {         // will either check C or Y board based on what have been passed from playerTurn function
+        cout << "Coordinate already occupied.( Wont place anything, wait for next round)\n";
+        return 0;
+    }
+
+    else if ((isMelee && col != 2) && (isMelee && col != 3)) {
+        cout << "Invalid column for placement ( Melee-> only in 2nd and 3rd coloum ).( Wont place anything, wait for next round)\n";
+        return 0;
+    }
+
+
+    else if ((!isMelee && col != 1) && (!isMelee && col != 2)) {
+        cout << "Invalid column for placement ( Ranged-> only in 2nd and 1st coloum ).( Wont place anything, wait for next round)\n";
+        return 0;
+    }
+
+
+    else if (playerXStarts && isMelee && playerX_Mpieces[index]->getUsage() == 0) { // X player melee usage
+
+
+        cout << "X ran out of: " << playerX_Mpieces[index]->getCharacter() << " pieces.( Wont place anything, wait for next round)\n";
+        return 0;
+    }
+
+
+
+    else if (!playerXStarts && isMelee && playerY_Mpieces[index]->getUsage() == 0) {// Y player melee usage
+
+
+        cout << "Y ran out of: " << playerX_Mpieces[index]->getCharacter() << " pieces.( Wont place anything, wait for next round)\n";
+        return 0;
+    }
+
+
+    else if (playerXStarts && !isMelee && playerX_Rpieces[index]->getUsage() == 0) { // X player ranged pieces
+
+
+        cout << "X ran out of: " << playerX_Rpieces[index]->getCharacter() << " pieces.( Wont place anything, wait for next round)\n";
+        return 0;
+    }
+
+
+
+    else if (!playerXStarts && !isMelee && playerY_Rpieces[index]->getUsage() == 0) { //Y player ranged pieces
+
+
+        cout << "Y ran out of: " << playerX_Rpieces[index]->getCharacter() << " pieces.( Wont place anything, wait for next round)\n";
+        return 0;
+    }
+
+
+
+
+    else {   // valid coordinate
+
+        // cout<<"\n charact: " << playerX_Rpieces[index]->getCharacter(); testing 
+         //cout <<"\n row is : " <<row <<"\n"; test , needs decrementing
+
+
+
+
+
+
+        //V.Important Note: my way of implementing this game:Starting player is randomly chosen for 1st round ->after 1st round  they change each round -> the player who starts the attack is the player who puts his piece last
+
+       // cout << "\n\n ismelee: " << isMelee << "\n\nplayerXstart : " << playerXStarts << "\n\n"; testing that iMelee is changing when choosing different pieces and also testing that player turns change correctly
+
+
+        if (playerXStarts) {
+            if (isMelee == true) {
+
+                cout << "\nPlayer X board:\n\n";
+                playerBoard.placePiece(row - 1, col - 1, playerX_Mpieces[index]->getCharacter());
+
+                playerX_Mpieces[index]->decreaseUsage();
+
+
+            }
+
+            else {
+
+                cout << "\nPlayer X board:\n\n";
+                playerBoard.placePiece(row - 1, col - 1, playerX_Rpieces[index]->getCharacter());
+
+                playerX_Rpieces[index]->decreaseUsage();
+
+
+            }
+
+        }
+
+
+
+        else {
+
+            if (isMelee == true) {
+                cout << "\nPlayer Y board:\n\n";
+                playerBoard.placePiece(row - 1, col - 1, playerY_Mpieces[index]->getCharacter());
+                // playerBoard.updateHealth(row - 1, col - 1, playerY_Mpieces[index]->getHealth()); had this line but I realised I am just double updating the health since its updating in placePiece function
+                playerY_Mpieces[index]->decreaseUsage();
+            }
+
+            else {
+                cout << "\nPlayer Y board:\n\n";
+                playerBoard.placePiece(row - 1, col - 1, playerY_Rpieces[index]->getCharacter());
+                // playerBoard.updateHealth(row - 1, col - 1, playerY_Rpieces[index]->getHealth());
+                playerY_Rpieces[index]->decreaseUsage();
+
+            }
+
+
+        }
+
+
+
+        return 1;   //if the position is valid and passed all erro checks
+
+    }
+}
+
+
+
+
+
+void Gameplay::processAttack(int attacker_row, int attacker_col) {
+
+
+
+
+    //first attacking board will be the board of the player who placed his piece last . To be more fair   
+
+    // the specified board for the special ability should be the attacker, thats how I based it in playgame()
+
+
+
+    /* These simple 2 lines of (cout) helped me detect some serious errors
+    cout << "\nrow passed to attack function: " << attacker_row;
+    cout << "\ncol of the piece type in attack function: " << attacker_col;
+      */
+
+
+
+    if (playerXStarts)  //Here you could think about it like if(if(playerX_last_to_place)) because it has taken an opposite value to change turns in plaGame() function
+    {
+
+
+        int Total_Y_health = 0;  //total health for pieces in that row of Y, will help me in determining if the piece should attack player or not
+        for (int j = 0; j < 3; j++) {
+            Total_Y_health = Total_Y_health + playerYBoard.getHealth(attacker_row, j);
+        }
+
+        // cout << "\n\ntotal pieces health: " << Total_Y_health<<"\n\n";  testing
+
+
+        for (int j = 0; j < 3; j++) { // to travers all Colums for the specified row
+
+            int defender_health = playerYBoard.getHealth(attacker_row, j);
+            int attacker_dmg = playerXBoard.getdmg(attacker_row, attacker_col);
+
+            if (playerYBoard.getHealth(attacker_row, j) > 0) { //There is a piece to attack in the same row in player Y board as attacker row (X) and its health isnt 0 then attack and update health
+                playerYBoard.updateHealth(attacker_row, j, defender_health - attacker_dmg);
+                Total_Y_health = Total_Y_health - playerYBoard.getHealth(attacker_row, j); //also update total health of pieces for that row
+
+                if (playerYBoard.getHealth(attacker_row, j) == 0)//if it dies after attack continue to next loop iteration ( next pieces)
+                    continue;
+
+                else // doesnt die after attack, then  exit the whole loop . The attacker piece cant attack anymore pieces 
+
+                    break;
+
+            }
+
+
+            else if (playerYBoard.getHealth(attacker_row, j) <= 0 && Total_Y_health != 0) // if that defender piece in that specified col is dead and health of that defending row isnt 0 yet ( means their are pieces left) go to next loop iteration
+
+            {
+
+                continue;
+
+            }
+
+
+
+
+            else if (playerYBoard.getHealth(attacker_row, j) <= 0 && Total_Y_health == 0) {
+                playerYHealth = playerYHealth - attacker_dmg;
+                break; // solved couple of errors
+
+            }
+        }
+
+    }
+
+
+
+
+
+
+    if (!playerXStarts)  //Here you could think about it like if(if(playerY_last_to_place)) because it has taken an opposite value to change turns in plaGame() function
+    {
+
+
+        int Total_X_health = 0;  //total health for pieces in that row of Y, will help me in determining if the piece should attack player or not
+        for (int j = 0; j < 3; j++) {
+            Total_X_health = Total_X_health + playerXBoard.getHealth(attacker_row, j);
+        }
+
+        // cout << "\n\ntotal pieces health: " << Total_X_health<<"\n\n";  testing
+
+
+        for (int j = 0; j < 3; j++) { // to travers all Colums for the specified row
+
+            int defender_health = playerXBoard.getHealth(attacker_row, j);
+            int attacker_dmg = playerYBoard.getdmg(attacker_row, attacker_col);
+
+            if (playerXBoard.getHealth(attacker_row, j) > 0) { //There is a piece to attack in the same row in player Y board as attacker row (X) and its health isnt 0 then attack and update health
+                playerXBoard.updateHealth(attacker_row, j, defender_health - attacker_dmg);
+                Total_X_health = Total_X_health - playerXBoard.getHealth(attacker_row, j); //also update total health of pieces for that row
+
+                if (playerXBoard.getHealth(attacker_row, j) == 0)//if it dies after attack continue to next loop iteration ( next pieces)
+                    continue;
+
+                else // doesnt die after attack, then  exit the whole loop . The attacker piece cant attack anymore pieces 
+
+                    break;
+
+            }
+
+
+            else if (playerXBoard.getHealth(attacker_row, j) <= 0 && Total_X_health != 0) // if that defender piece in that specified col is dead and health of that defending row isnt 0 yet ( means their are pieces left) go to next loop iteration
+
+            {
+
+                continue;
+
+            }
+
+
+
+
+            else if (playerXBoard.getHealth(attacker_row, j) <= 0 && Total_X_health == 0) {
+                playerXHealth = playerXHealth - attacker_dmg;
+                break;
+
+            }
+        }
+
+    }
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+bool Gameplay::checkGameEnd() {
+    if (playerXHealth <= 0 || playerYHealth <= 0) {
+        std::cout << "Game Over!\n";
+        if (playerXHealth <= 0) {
+            cout << "Player X has lost the game\n";
+
+        }
+        else if (playerYHealth <= 0) {
+            cout << "Player Y has lost the game\n";
+
+        }
+        else
+            cout << "Its a tie\n";
+
+        return 1;
+    }
+}
+
+//-----------------------------------------------------------------------
+
+#include "Pieces.h"
+
+Pieces::Pieces() {
+    //initializing the stats
+    health = 0;
+    damage = 0;
+    symbol = 'x';
+    remainingUsage = 0;
+}
+
+Pieces::Pieces(int health, int damage, char symbol, int remainingUsage)//constructor
+    : health(health), damage(damage), symbol(symbol), remainingUsage(remainingUsage) {}
+
+int Pieces::getHealth() {// returns health for the piece
+    return health;
+}
+
+int Pieces::getDamage() {// returns damage for the piece
+    return damage;
+}
+
+char Pieces::getCharacter() {// returns character for the piece
+    return symbol;
+}
+
+int Pieces::getUsage() {// returns usages for the piece
+    return remainingUsage;
+}
+
+void Pieces::decreaseUsage() {// decreasing usages till its 0 so that it wont go to a negative number
+    if (remainingUsage > 0) {
+        remainingUsage--;
+    }
+}
+
+void Pieces::decreaseHealth(int amount) {// decreasing health depending on the amount of damage the piece got till it gets to 0 so that it wont go to a negative number
+    health -= amount;
+    if (health < 0) {
+        health = 0;
+    }
+}
+
+
+
+Melee::Melee(int health, int damage, char symbol, int remainingUsage)
+    : Pieces(health, damage, symbol, remainingUsage) {}//Melee constructor 
+
+void Melee::printPiece() const {//printing the datails of the melee piece
+    std::cout << "Melee Piece: Health(" << health << ") Damage(" << damage << ") Symbol(" << symbol << ")";
+}
+
+Ranged::Ranged(int health, int damage, char symbol, int remainingUsage)
+    : Pieces(health, damage, symbol, remainingUsage) {}//Ranged constructor
+
+void Ranged::printPiece() const {//printing the datails of the ranged piece 
+    std::cout << "Ranged Piece: Health(" << health << ") Damage(" << damage << ") Symbol(" << symbol << ")";
+}
+
+Spearman::Spearman()
+    : Melee(6, 3, 'S', -1) {}//Spearman constructor with Health damage character and usages, usages = -1 means unlimited 
+
+void Spearman::printPiece() const {//printing the datails of Spearman piece it will call the base function (Melee)
+    Melee::printPiece();
+}
+
+Ranger::Ranger()
+    : Melee(8, 6, 'R', 2) {}//Ranged constructor with Health damage character and usages 
+
+void Ranger::printPiece() const {//printing the datails of Ranger piece it will call the base function (Melee)
+    Melee::printPiece();
+}
+
+Swordsman::Swordsman()
+    : Melee(6, 4, 'W', -1) {}//Swordsman constructor with Health damage character and usages, usages = -1 means unlimited 
+
+void Swordsman::printPiece() const {//printing the details of Swordsman it will call the base function (Melee)
+    Melee::printPiece();
+}
+
+Knight::Knight()
+    : Melee(10, 10, 'K', 1) {}//Knight constructor with Health damage character and usages 
+
+void Knight::printPiece() const {//printing the details of Knight piece it will call the base function (Melee)
+    Melee::printPiece();
+}
+
+Bowman::Bowman()
+    : Ranged(12, 3, 'B', -1) {}//Bowman constructor with Health damage character and usages, usages = -1 means unlimited 
+
+void Bowman::printPiece() const {//printing the details of Bowman piece it will call the base function (Ranged)
+    Ranged::printPiece();
+}
+
+Elf::Elf()
+    : Ranged(8, 6, 'E', 3) {}//Elf constructor with Health damage character and usages
+
+void Elf::printPiece() const {//printing the details of Elf piece it will call the base function (Ranged)
+    Ranged::printPiece();
+}
+
+Mage::Mage()
+    : Ranged(4, 8, 'M', 2) {}//Mage constructor with Health damage character and usages
+
+void Mage::printPiece() const {
+    Ranged::printPiece();//printing the details of Mage piece it will call the base function (Ranged)
+}
+
+
+//-------------------------------------------------------------------------
+
+
+
+
+#include <iostream>
+#include "Board.h"
+#include "Pieces.h"
+#include "Gameplay.h"
+#include "time.h"  //I used it just for srand(time(NULL))
+#include < cstdlib >  /*This library handles dynamic memory allocations and random number generating */
+
+
+using namespace std;
+
+
+
+int main() {
+
+
+
+	cout << "\n\n-----------------------------HEROES OF THE BOARD------------------------------------- \n\n";
+
+	int over = 0;
+
+	srand(time(NULL)); // so   playerXStarts = rand() % 2;  in Board.cpp doesnt keep generating same random number (0 or 1) for each run
+
+	while (!over) {
+
+
+
+		Gameplay g1;
+		g1.playGame();
+
+		cout << "\nWant to play again , 1 for yes , 0 for no";
+		cin >> over;
+
+		g1.~Gameplay();
+
+
+
+	}
+	return 0;
+}
+
+
+
+
