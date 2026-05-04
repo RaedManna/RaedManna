@@ -12,7 +12,7 @@ I am currently looking for **full-time remote junior software engineering, full-
 -  Full-stack developer internship experience.
 -  Open to full-time remote roles
 -  Interested in full-stack development, backend systems, AI-assisted applications, and databases
--  Built an AI predictive maintenance app for vehicles using Python, Flutter, Supabase, OCR, and Google Places API, with the help of 3 other team mates.
+-  Built an AI predictive maintenance app for vehicles using Python, Flutter, Supabase, OCR, and Google Places API as part of a four-person team.
 -  Graduated with Honors and received two Honor certificates and one High Honor certificate
 
 ---
