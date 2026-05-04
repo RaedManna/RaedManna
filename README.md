@@ -32,7 +32,7 @@ FastAPI, REST APIs, Supabase, Google Places API, Google Maps API
 PostgreSQL, SQL, Supabase Database, SQL Workbench
 
 **AI & Data:**  
-Machine Learning, Deep Learning and Nueral Networks building, OCR, Predictive Analytics, Probability & Statistics
+Machine Learning, Deep Learning, Neural Networks, OCR, Predictive Analytics, Probability & Statistics
 
 **Tools & Testing:**  
 Git, Unit Testing, Integration Testing, Cloud APIs
