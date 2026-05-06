@@ -1,6 +1,6 @@
 # Hi, I'm Raed Manna 👋
 
-I'm a Computer Engineering graduate and Junior Full-Stack Developer focused on building practical, database-backed applications with modern web, mobile, and AI-assisted technologies.
+I'm a Computer Engineering graduate and a Full-Stack Developer focused on building practical, database-backed applications with modern web, mobile, and AI-assisted technologies.
 
 I am currently looking for **full-time remote junior software engineering, full-stack development, backend development, or AI-assisted application development roles**.
 
